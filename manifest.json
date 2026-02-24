@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Bob Extension",
+  "version": "1.0.4",
+  "description": "A chrome extension for Bob",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "bob1.png"
+  }
+}
