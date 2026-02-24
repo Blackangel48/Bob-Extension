@@ -6,13 +6,13 @@ ball.style.width = '50px';
 ball.style.height = '50px';
 ball.style.backgroundColor = '#ff4757';
 ball.style.borderRadius = '50%';
-ball.style.position = 'fixed'; // Reste visible même si on scroll
+ball.style.position = 'fixed';
 ball.style.top = '100px';
 ball.style.left = '100px';
 ball.style.cursor = 'grab';
 ball.style.zIndex = '1000000';
 ball.style.boxShadow = '0 4px 5px rgba(0,0,0,0.3)';
-ball.style.transition = 'transform 0.1s ease'; // Petit effet fluide
+ball.style.transition = 'transform 0.1s ease';
 
 document.body.appendChild(ball);
 
