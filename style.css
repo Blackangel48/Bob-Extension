@@ -1,25 +1,61 @@
-
 body { 
-    width: 200px; 
-    padding: 10px; 
-    font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+    width: 220px; 
+    padding: 15px; 
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f0f2f5;
+    color: #333;
 }
 
-input { 
-    width: 80%; 
-    margin: 10px 0;
+h2 { margin: 0; color: #ff4757; font-size: 24px; text-align: center; }
+h4 { margin: 0 0 15px 0; color: #747d8c; font-weight: normal; text-align: center; font-size: 12px; }
+
+label { font-size: 13px; font-weight: 600; color: #57606f; }
+
+input[type="number"], input[type="color"] { 
+    width: 100%; 
+    padding: 8px;
+    margin: 8px 0 15px 0;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-sizing: border-box;
 }
 
-button { 
+#randomColorDiv {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    background: #fff;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+}
+
+#randomColorDiv input { width: auto; margin: 0; }
+
+#ballColor {
+    height: 50px;
+}
+
+#addBall { 
     width: 100%; 
     cursor: pointer; 
-    padding: 5px; 
-    border-radius: 5px;
-    background-color: #eee;
+    padding: 12px; 
+    border-radius: 12px;
+    background: linear-gradient(135deg, #ff4757, #ff6b81);
+    color: white;
     border: none;
+    font-weight: bold;
+    font-size: 14px;
+    box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
+    transition: transform 0.1s, box-shadow 0.1s;
 }
 
-button:hover { 
-    background-color: #ddd;
+#addBall:hover { 
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(255, 71, 87, 0.4);
 }
 
+#addBall:active {
+    transform: translateY(1px);
+}

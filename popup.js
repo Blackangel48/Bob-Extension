@@ -1,15 +1,27 @@
 document.getElementById('addBall').addEventListener('click', async () => {
   const size = document.getElementById('ballSize').value;
-  
-  // 1. Trouver l'onglet actif
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const isRandom = document.getElementById('ballRandomColor').checked;
+  let color = document.getElementById('ballColor').value;
 
-  // 2. Envoyer le message à cet onglet
+  if (isRandom) {
+    // Génère une couleur aléatoire
+    color = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+  }
+
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab) {
     chrome.tabs.sendMessage(tab.id, {
       action: "createBall",
       size: parseInt(size),
-      color: "#" + Math.floor(Math.random()*16777215).toString(16) // Couleur aléatoire
+      color: color 
     });
   }
+});
+
+const randomCheckbox = document.getElementById('ballRandomColor');
+const colorInput = document.getElementById('ballColor');
+
+randomCheckbox.addEventListener('change', () => {
+  colorInput.disabled = randomCheckbox.checked;
+  colorInput.style.opacity = randomCheckbox.checked ? "0.5" : "1";
 });
