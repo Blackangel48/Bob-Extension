@@ -1,0 +1,25 @@
+
+body { 
+    width: 200px; 
+    padding: 10px; 
+    font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+}
+
+input { 
+    width: 80%; 
+    margin: 10px 0;
+}
+
+button { 
+    width: 100%; 
+    cursor: pointer; 
+    padding: 5px; 
+    border-radius: 5px;
+    background-color: #eee;
+    border: none;
+}
+
+button:hover { 
+    background-color: #ddd;
+}
+

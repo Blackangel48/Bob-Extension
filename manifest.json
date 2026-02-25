@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Bob Extension",
-  "version": "1.0.5",
-  "description": "A chrome extension for Bob",
+  "name": "BOB Extension",
+  "version": "1.1.0",
+  "description": "Billion of Balls",
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
@@ -11,6 +11,6 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_icon": "bob1.png"
+    "default_icon": "icon.png"
   }
 }

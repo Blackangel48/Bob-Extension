@@ -1,91 +1,115 @@
-// 1. Création de la balle
-const ball = document.createElement('div');
+class Ball {
+  constructor(size, color, posX, posY) {
+    this.size = size;
+    this.color = color;
+    this.posX = posX;
+    this.posY = posY;
+    this.velX = 0;
+    this.velY = 0;
+    this.isDragging = false;
+    this.lastMouseX = 0;
+    this.lastMouseY = 0;
 
-// Attributs de la balle
-let ballSize = 50;
+    // Création de l'élément
+    this.ball = document.createElement('div');
+    this.applyStyle();
+    document.body.appendChild(this.ball);
 
-// Style de la balle
-ball.style.width = ballSize + 'px';
-ball.style.height = ballSize + 'px';
-ball.style.backgroundColor = '#ff4757';
-ball.style.borderRadius = '50%';
-ball.style.position = 'fixed';
-ball.style.top = '100px';
-ball.style.left = '100px';
-ball.style.cursor = 'grab';
-ball.style.zIndex = '1000000';
-ball.style.boxShadow = '0 4px 5px rgba(0,0,0,0.3)';
-ball.style.transition = 'transform 0.1s ease';
-
-document.body.appendChild(ball);
-
-// --- Variables de physique ---
-let posX = 100, posY = 100;      // Position
-let vx = 0, vy = 0;              // Vitesse (Velocity)
-const gravity = 0.5;             // Force de pesanteur
-const friction = 0.985;           // Perte d'énergie à chaque mouvement (air)
-const bounce = 0.8;              // Perte d'énergie au rebond (sol/murs)
-let isDragging = false;
-let lastMouseX, lastMouseY;
-
-// --- Boucle d'animation ---
-function update() {
-  if (!isDragging) {
-    // 1. Appliquer la gravité
-    vy += gravity;
-
-    // 2. Appliquer la friction (résistance de l'air)
-    vx *= friction;
-    vy *= friction;
-
-    // 3. Mettre à jour la position
-    posX += vx;
-    posY += vy;
-
-    // 4. Gestion des collisions (rebonds)
-    // Sol
-    if (posY + ballSize > window.innerHeight) {
-      posY = window.innerHeight - ballSize;
-      vy *= -bounce; // Inverser la vitesse et réduire
-    }
-    // Murs
-    if (posX + ballSize > window.innerWidth || posX < 0) {
-      vx *= -bounce;
-      posX = posX < 0 ? 0 : window.innerWidth - ballSize;
-    }
+    // Initialisation des événements
+    this.initEvents();
   }
 
-  // Appliquer les changements visuels
-  ball.style.left = posX + 'px';
-  ball.style.top = posY + 'px';
+  applyStyle() {
+    Object.assign(this.ball.style, {
+      width: `${this.size}px`,
+      height: `${this.size}px`,
+      backgroundColor: this.color,
+      borderRadius: '50%',
+      position: 'fixed',
+      cursor: 'grab',
+      zIndex: '1000000',
+      boxShadow: '0 4px 5px rgba(0,0,0,0.3)',
+      // On retire la transition CSS pour la physique car elle ralentit les calculs
+    });
+  }
 
-  requestAnimationFrame(update); // Relancer la boucle au prochain rafraîchissement d'écran
+  initEvents() {
+    this.ball.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      this.isDragging = true;
+      this.ball.style.cursor = 'grabbing';
+      this.lastMouseX = e.clientX;
+      this.lastMouseY = e.clientY;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (this.isDragging) {
+        // Calcul de la vitesse par l'écart de position
+        this.velX = e.clientX - this.lastMouseX;
+        this.velY = e.clientY - this.lastMouseY;
+
+        this.posX = e.clientX - this.size / 2;
+        this.posY = e.clientY - this.size / 2;
+
+        this.lastMouseX = e.clientX;
+        this.lastMouseY = e.clientY;
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      this.isDragging = false;
+      this.ball.style.cursor = 'grab';
+    });
+  }
+
+  update() {
+    if (!this.isDragging) {
+      this.velY += gravity;
+      this.velX *= friction;
+      this.velY *= friction;
+
+      this.posX += this.velX;
+      this.posY += this.velY;
+
+      // Collisions
+      if (this.posY + this.size > window.innerHeight) {
+        this.posY = window.innerHeight - this.size;
+        this.velY *= -bounce;
+      }
+      if (this.posX + this.size > window.innerWidth || this.posX < 0) {
+        this.velX *= -bounce;
+        this.posX = this.posX < 0 ? 0 : window.innerWidth - this.size;
+      }
+    }
+
+    // Rendu visuel
+    this.ball.style.left = `${this.posX}px`;
+    this.ball.style.top = `${this.posY}px`;
+  }
 }
 
-// --- Interaction souris ---
-ball.addEventListener('mousedown', (e) => {
-  e.preventDefault();
-  isDragging = true;
-  vx = 0; vy = 0; // On arrête la physique pendant qu'on tient la balle
-});
+const gravity = 0.5;
+const friction = 0.985;
+const bounce = 0.8;
+const Balls = [];
 
-window.addEventListener('mousemove', (e) => {
-  if (isDragging) {
-    // Calcul de l'impulsion (pour pouvoir "lancer" la balle)
-    vx = e.clientX - lastMouseX;
-    vy = e.clientY - lastMouseY;
-    
-    posX = e.clientX - (ballSize/2);
-    posY = e.clientY - (ballSize/2);
-    
-    lastMouseX = e.clientX;
-    lastMouseY = e.clientY;
+// Boucle d'animation unique
+function mainLoop() {
+  Balls.forEach(ball => ball.update());
+  requestAnimationFrame(mainLoop);
+}
+
+mainLoop(); // On lance le moteur
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "createBall") {
+    // On crée une balle au centre de l'écran avec les données du popup
+    const newBall = new Ball(
+      request.size || 50, 
+      request.color || 'red', 
+      window.innerWidth / 2, 
+      window.innerHeight / 2
+    );
+    Balls.push(newBall);
   }
 });
-
-window.addEventListener('mouseup', () => {
-  isDragging = false;
-});
-
-// Lancer la boucle
-update();
