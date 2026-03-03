@@ -25,6 +25,11 @@ class Ball {
       this.ball.parentNode.removeChild(this.ball);
     }
 
+    // Nettoie les listeners
+    window.removeEventListener('mousemove', this.mouseMoveHandler);
+    window.removeEventListener('mouseup', this.mouseUpHandler);
+    this.ball.removeEventListener('mousedown', this.mouseDownHandler);
+
     // Nettoie les références
     this.isDragging = false;
   }
@@ -44,15 +49,7 @@ class Ball {
   }
 
   initEvents() {
-    this.ball.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      this.isDragging = true;
-      this.ball.style.cursor = 'grabbing';
-      this.lastMouseX = e.clientX;
-      this.lastMouseY = e.clientY;
-    });
-
-    window.addEventListener('mousemove', (e) => {
+    this.mouseMoveHandler = (e) => {
       if (this.isDragging) {
         // Calcul de la vitesse par l'écart de position
         this.velX = e.clientX - this.lastMouseX;
@@ -64,12 +61,26 @@ class Ball {
         this.lastMouseX = e.clientX;
         this.lastMouseY = e.clientY;
       }
-    });
+    };
 
-    window.addEventListener('mouseup', () => {
+    this.mouseUpHandler = () => {
       this.isDragging = false;
       this.ball.style.cursor = 'grab';
-    });
+    };
+
+    this.mouseDownHandler = (e) => {
+      e.preventDefault();
+      this.isDragging = true;
+      this.ball.style.cursor = 'grabbing';
+      this.lastMouseX = e.clientX;
+      this.lastMouseY = e.clientY;
+    };
+
+    window.addEventListener('mousemove', this.mouseMoveHandler);
+
+    window.addEventListener('mouseup', this.mouseUpHandler);
+
+    this.ball.addEventListener('mousedown', this.mouseDownHandler);
   }
 
   update() {
@@ -109,8 +120,9 @@ function mainLoop() {
   requestAnimationFrame(mainLoop);
 }
 
-mainLoop(); // On lance le moteur
+mainLoop();
 
+// Chrome message listeners
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "createBall") {
     // On crée une balle au centre de l'écran avec les données du popup
