@@ -19,6 +19,16 @@ class Ball {
     this.initEvents();
   }
 
+  destroy() {
+    // Supprime l'élément de la page web
+    if (this.ball && this.ball.parentNode) {
+      this.ball.parentNode.removeChild(this.ball);
+    }
+
+    // Nettoie les références
+    this.isDragging = false;
+  }
+
   applyStyle() {
     Object.assign(this.ball.style, {
       width: `${this.size}px`,
@@ -111,5 +121,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       window.innerHeight / 2
     );
     Balls.push(newBall);
+  }
+
+  if (request.action === "deleteBalls") {
+    // On supprime les balles
+    Balls.forEach((ball) => {
+      ball.destroy();
+    });
+    Balls.length = 0;
   }
 });
