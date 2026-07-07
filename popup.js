@@ -141,7 +141,7 @@ async function applyPhysicsPreset(gravityVal, frictionVal, bounceVal, shakeVal) 
 
 // Clic sur le bouton Terre
 earthBtn.addEventListener('click', () => {
-  applyPhysicsPreset(0.5, 0.985, 0.8, 100);
+  applyPhysicsPreset(0.5, 0.985, 0.7, 100);
 });
 
 // Clic sur le bouton Lune
