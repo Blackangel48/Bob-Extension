@@ -1,19 +1,17 @@
 document.getElementById('addBall').addEventListener('click', async () => {
   const size = document.getElementById('ballSize').value;
+  const number = document.getElementById('ballNumber').value;
   const isRandom = document.getElementById('ballRandomColor').checked;
   let color = document.getElementById('ballColor').value;
-
-  if (isRandom) {
-    // Génère une couleur aléatoire
-    color = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
-  }
 
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab) {
     chrome.tabs.sendMessage(tab.id, {
       action: "createBall",
       size: parseInt(size),
-      color: color 
+      isRandomColor: isRandom,
+      color: color,
+      number: parseInt(number)
     });
   }
 });

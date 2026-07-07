@@ -115,7 +115,7 @@ class Ball {
   }
 }
 
-const gravity = 0.5;
+const gravity = 0.2;
 const friction = 0.985;
 const bounce = 0.8;
 const shakeForce = 100; // Force de secousse pour la fonction shake
@@ -132,14 +132,20 @@ mainLoop();
 // Chrome message listeners
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "createBall") {
-    // On crée une balle au centre de l'écran avec les données du popup
-    const newBall = new Ball(
-      request.size || 100, 
-      request.color || 'red', 
-      Math.floor(Math.random()*16777215) % (window.innerWidth - request.size || 100),
-      window.innerHeight / 2
-    );
-    Balls.push(newBall);
+    // On crée une balle avec les données du popup
+    for (let i = 0; i < request.number; i++) {
+      if (request.isRandomColor) {
+        // Génère une couleur aléatoire
+        request.color = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+      }
+      const newBall = new Ball(
+        request.size || 100, 
+        request.color || 'red', 
+        Math.floor(Math.random()*16777215) % (window.innerWidth - request.size || 100),
+        window.innerHeight / 2
+      );
+      Balls.push(newBall);
+    }
   }
 
   if (request.action === "deleteBalls") {
