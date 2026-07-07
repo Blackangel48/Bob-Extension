@@ -19,6 +19,12 @@ class Ball {
     this.initEvents();
   }
 
+  shake() {
+    // Applique une force aléatoire pour secouer la balle
+    this.velX += (Math.random() - 0.5) * shakeForce; // Force horizontale aléatoire
+    this.velY += (Math.random() - 0.5) * shakeForce; // Force verticale aléatoire
+  }
+
   destroy() {
     // Supprime l'élément de la page web
     if (this.ball && this.ball.parentNode) {
@@ -112,6 +118,7 @@ class Ball {
 const gravity = 0.5;
 const friction = 0.985;
 const bounce = 0.8;
+const shakeForce = 100; // Force de secousse pour la fonction shake
 const Balls = [];
 
 // Boucle d'animation unique
@@ -141,5 +148,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       ball.destroy();
     });
     Balls.length = 0;
+  }
+
+  if (request.action === "shakeBalls") {
+    // On secoue les balles
+    Balls.forEach((ball) => {
+      ball.shake();
+    });
   }
 });

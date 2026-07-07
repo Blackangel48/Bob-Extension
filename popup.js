@@ -28,6 +28,16 @@ document.getElementById('deleteBalls').addEventListener('click', async () => {
   }
 });
 
+document.getElementById('shakeBalls').addEventListener('click', async () => {
+
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab) {
+    chrome.tabs.sendMessage(tab.id, {
+      action: "shakeBalls"
+    });
+  }
+});
+
 const randomCheckbox = document.getElementById('ballRandomColor');
 const colorInput = document.getElementById('ballColor');
 
