@@ -104,6 +104,56 @@ numberInput.addEventListener('change', () => {
 // Initialiser le compteur de balles
 updateBallCount();
 
+// --- GESTION DES PRÉRÉGLAGES (PRESETS) ---
+const earthBtn = document.getElementById('presetEarth');
+const moonBtn = document.getElementById('presetMoon');
+const spaceBtn = document.getElementById('presetSpace');
+
+// Fonction globale pour appliquer une configuration d'un coup
+async function applyPhysicsPreset(gravityVal, frictionVal, bounceVal, shakeVal) {
+  // Mettre à jour graphiquement les sliders et les textes
+  gravitySlider.value = gravityVal;
+  gravityValueDisplay.textContent = gravityVal;
+  
+  frictionSlider.value = frictionVal;
+  frictionValueDisplay.textContent = frictionVal;
+  
+  bounceSlider.value = bounceVal;
+  bounceValueDisplay.textContent = bounceVal;
+  
+  shakeSlider.value = shakeVal;
+  shakeValueDisplay.textContent = shakeVal;
+
+  // Sauvegarder dans le stockage de l'extension
+  chrome.storage.local.set({
+    gravity: gravityVal,
+    friction: frictionVal,
+    bounce: bounceVal,
+    shake: shakeVal
+  });
+
+  // Envoyer instantanément les nouvelles valeurs au moteur physique
+  await sendToContentScript("updateGravity", { gravity: gravityVal });
+  await sendToContentScript("updateFriction", { friction: frictionVal });
+  await sendToContentScript("updateBounce", { bounce: bounceVal });
+  await sendToContentScript("updateShake", { shake: shakeVal });
+}
+
+// Clic sur le bouton Terre
+earthBtn.addEventListener('click', () => {
+  applyPhysicsPreset(0.5, 0.985, 0.8, 100);
+});
+
+// Clic sur le bouton Lune
+moonBtn.addEventListener('click', () => {
+  applyPhysicsPreset(0.15, 0.99, 0.9, 60);
+});
+
+// Clic sur le bouton Espace
+spaceBtn.addEventListener('click', () => {
+  applyPhysicsPreset(0, 1, 1, 10);
+});
+
 // --- GESTION DES ONGLETS ---
 const tabButtons = document.querySelectorAll('.tab-btn');
 const tabContents = document.querySelectorAll('.tab-content');

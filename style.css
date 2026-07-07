@@ -115,3 +115,41 @@ input[type="number"], input[type="color"] {
 }
 .stats-box p { margin: 0; color: #747d8c; font-size: 12px; }
 .stats-box h3 { margin: 5px 0 0 0; color: #2f3542; font-size: 20px; }
+
+/* --- BOUTONS DE PRÉRÉGLAGES --- */
+.preset-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.preset-btn {
+    flex: 1;
+    padding: 10px;
+    font-size: 14px;
+    font-weight: bold;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.preset-btn:hover {
+    background-color: #f1f2f6;
+    border-color: #ff4757;
+    transform: translateY(-1px);
+}
+
+.preset-btn:active {
+    transform: translateY(1px);
+}
+
+/* Ligne de séparation discrète */
+.separator {
+    border: 0;
+    height: 1px;
+    background: #e4e7eb;
+    margin: 15px 0;
+}
