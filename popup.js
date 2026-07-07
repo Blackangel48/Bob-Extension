@@ -54,6 +54,7 @@ const bounceSlider = document.getElementById('bounce');
 const bounceValueDisplay = document.getElementById('bounceValue');
 const shakeSlider = document.getElementById('shake');
 const shakeValueDisplay = document.getElementById('shakeValue');
+const closedTopCheckbox = document.getElementById('closedTop');
 
 // --- ÉCOUTEURS DES SLIDERS (CORRIGÉS) ---
 gravitySlider.addEventListener('input', async () => {
@@ -84,12 +85,19 @@ shakeSlider.addEventListener('input', async () => {
   await sendToContentScript("updateShake", { shake: val });
 });
 
+closedTopCheckbox.addEventListener('change', async () => {
+  const isChecked = closedTopCheckbox.checked;
+  chrome.storage.local.set({ closedTop: isChecked });
+  await sendToContentScript("updateClosedTop", { closedTop: isChecked });
+});
+
 // Récupérer les valeurs sauvegardées à l'OUVERTURE du popup pour positionner les sliders au bon endroit
-chrome.storage.local.get(['gravity', 'friction', 'bounce', 'shake'], (data) => {
+chrome.storage.local.get(['gravity', 'friction', 'bounce', 'shake', 'closedTop'], (data) => {
   if (data.gravity !== undefined) { gravitySlider.value = data.gravity; gravityValueDisplay.textContent = data.gravity; }
   if (data.friction !== undefined) { frictionSlider.value = data.friction; frictionValueDisplay.textContent = data.friction; }
   if (data.bounce !== undefined) { bounceSlider.value = data.bounce; bounceValueDisplay.textContent = data.bounce; }
   if (data.shake !== undefined) { shakeSlider.value = data.shake; shakeValueDisplay.textContent = data.shake; }
+  if (data.closedTop !== undefined) { closedTopCheckbox.checked = data.closedTop; }
 });
 
 randomCheckbox.addEventListener('change', () => {

@@ -99,9 +99,16 @@ class Ball {
       this.posY += this.velY;
 
       // Collisions
-      if (this.posY + this.size > window.innerHeight) {
-        this.posY = window.innerHeight - this.size;
-        this.velY *= -bounce;
+      if (closedTop){
+        if (this.posY + this.size > window.innerHeight || this.posY < 0) {
+          this.posY = this.posY < 0 ? 0 : window.innerHeight - this.size;
+          this.velY *= -bounce;
+        }
+      } else {
+        if (this.posY + this.size > window.innerHeight) {
+          this.posY = window.innerHeight - this.size;
+          this.velY *= -bounce;
+        }
       }
       if (this.posX + this.size > window.innerWidth || this.posX < 0) {
         this.velX *= -bounce;
@@ -119,6 +126,8 @@ let gravity = 0.5;
 let friction = 0.985;
 let bounce = 0.8;
 let shakeForce = 100; // Force de secousse pour la fonction shake
+
+let closedTop = false;
 const Balls = [];
 
 // Charger les constantes sauvegardées au démarrage du script sur la page web
@@ -187,5 +196,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
   if (request.action === "updateShake") {
     shakeForce = request.shake;
+  }
+  if (request.action === "updateClosedTop") {
+    closedTop = request.closedTop;
   }
 });
