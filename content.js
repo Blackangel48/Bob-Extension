@@ -134,9 +134,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "createBall") {
     // On crée une balle au centre de l'écran avec les données du popup
     const newBall = new Ball(
-      request.size || 50, 
+      request.size || 100, 
       request.color || 'red', 
-      Math.floor(Math.random()*16777215) % (window.innerWidth - request.size || 50),
+      Math.floor(Math.random()*16777215) % (window.innerWidth - request.size || 100),
       window.innerHeight / 2
     );
     Balls.push(newBall);
