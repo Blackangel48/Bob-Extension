@@ -115,7 +115,7 @@ class Ball {
   }
 }
 
-const gravity = 0.2;
+const gravity = 0.5;
 const friction = 0.985;
 const bounce = 0.8;
 const shakeForce = 100; // Force de secousse pour la fonction shake
@@ -161,5 +161,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     Balls.forEach((ball) => {
       ball.shake();
     });
+  }
+
+  if (request.action === "getBallCount") {
+    sendResponse({ count: Balls.length });
+    return true;
   }
 });
