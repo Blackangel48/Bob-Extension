@@ -142,7 +142,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         request.size || 100, 
         request.color || 'red', 
         Math.floor(Math.random()*16777215) % (window.innerWidth - request.size || 100),
-        window.innerHeight / 2
+        (window.innerHeight / 2) + (Math.floor(Math.random()*16777215) % 100)
       );
       Balls.push(newBall);
     }
