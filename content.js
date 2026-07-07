@@ -115,11 +115,19 @@ class Ball {
   }
 }
 
-const gravity = 0.5;
-const friction = 0.985;
-const bounce = 0.8;
-const shakeForce = 100; // Force de secousse pour la fonction shake
+let gravity = 0.5;
+let friction = 0.985;
+let bounce = 0.8;
+let shakeForce = 100; // Force de secousse pour la fonction shake
 const Balls = [];
+
+// Charger les constantes sauvegardées au démarrage du script sur la page web
+chrome.storage.local.get(['gravity', 'friction', 'bounce', 'shake'], (data) => {
+  if (data.gravity !== undefined) gravity = data.gravity;
+  if (data.friction !== undefined) friction = data.friction;
+  if (data.bounce !== undefined) bounce = data.bounce;
+  if (data.shake !== undefined) shakeForce = data.shake;
+});
 
 // Boucle d'animation unique
 function mainLoop() {
@@ -166,5 +174,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "getBallCount") {
     sendResponse({ count: Balls.length });
     return true;
+  }
+
+  if (request.action === "updateGravity") {
+    gravity = request.gravity;
+  }
+  if (request.action === "updateFriction") {
+    friction = request.friction;
+  }
+  if (request.action === "updateBounce") {
+    bounce = request.bounce;
+  }
+  if (request.action === "updateShake") {
+    shakeForce = request.shake;
   }
 });

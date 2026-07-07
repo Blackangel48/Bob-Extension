@@ -2,6 +2,8 @@
 <html lang="fr">
 <head>
   <link rel="stylesheet" href="style.css">
+  <title>BOB Extension</title>
+  <meta charset="UTF-8">
 </head>
 <body>
   <h2>BOB</h2>
@@ -9,27 +11,57 @@
 
   <p>Nombre de balles : <span id="ballCount">0</span></p>
 
-  <p>Construire une balle :</p>
-
-  <label for="ballSize">Taille (px):</label>
-  <input type="number" id="ballSize" value="100" min="10" max="10000">
-
-  <div id="randomColorDiv">
-    <input type="checkbox" id="ballRandomColor" name="randomColor">
-    <label for="ballRandomColor">Couleur aleatoire</label>
+  <div class="tabs-nav">
+    <button class="tab-btn active" data-tab="tab-controls">Controles</button>
+    <button class="tab-btn" data-tab="tab-options">Options</button>
   </div>
 
-  <label for="ballColor">Couleur :</label>
-  <input type="color" id="ballColor" value="#ff0000">
+  <div id="tab-controls" class="tab-content active">
 
-  <label for="ballNumber">Nombre de balles :</label>
-  <input type="number" id="ballNumber" value="1" min="1" max="1000">
+    <p>Construire une balle :</p>
 
-  <button id="addBall" class="btn">Ajouter 1 balle</button>
+    <label for="ballSize">Taille (px):</label>
+    <input type="number" id="ballSize" value="100" min="10" max="10000">
 
-  <button id="deleteBalls" class="btn">Supprimer toutes les balles</button>
+    <div id="randomColorDiv">
+      <input type="checkbox" id="ballRandomColor" name="randomColor">
+      <label for="ballRandomColor">Couleur aleatoire</label>
+    </div>
 
-  <button id="shakeBalls" class="btn">Secouer les balles</button>
+    <label for="ballColor">Couleur :</label>
+    <input type="color" id="ballColor" value="#ff0000">
+
+    <label for="ballNumber">Nombre de balles :</label>
+    <input type="number" id="ballNumber" value="1" min="1" max="1000">
+
+    <button id="addBall" class="btn">Ajouter 1 balle</button>
+
+    <button id="deleteBalls" class="btn">Supprimer toutes les balles</button>
+
+    <button id="shakeBalls" class="btn">Secouer les balles</button>
+
+  </div>
+  <div id="tab-options" class="tab-content">
+
+    <p>Options :</p>
+
+    <label for="gravity">Gravité :</label>
+    <input type="range" id="gravity" min="0" max="10" step="0.1" value="0.5">
+    <span id="gravityValue">0.5</span>
+
+    <label for="friction">Friction :</label>
+    <input type="range" id="friction" min="0" max="1" step="0.001" value="0.985">
+    <span id="frictionValue">0.985</span>
+
+    <label for="bounce">Rebond :</label>
+    <input type="range" id="bounce" min="0" max="2" step="0.1" value="0.8">
+    <span id="bounceValue">0.8</span>
+
+    <label for="shake">Secousse :</label>
+    <input type="range" id="shake" min="0" max="1000" step="1" value="100">
+    <span id="shakeValue">100</span>
+  </div>
+
   <script src="popup.js"></script>
 </body>
 </html>

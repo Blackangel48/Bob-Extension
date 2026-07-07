@@ -61,3 +61,57 @@ input[type="number"], input[type="color"] {
 .btn:active {
     transform: translateY(1px);
 }
+
+/* --- SYSTÈME D'ONGLETS --- */
+
+/* Barre de navigation des onglets */
+.tabs-nav {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 15px;
+    background: #e4e7eb;
+    padding: 4px;
+    border-radius: 8px;
+}
+
+/* Boutons d'onglets */
+.tab-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    padding: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #747d8c;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+/* Onglet actif */
+.tab-btn.active {
+    background: #fff;
+    color: #ff4757;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* Contenu des onglets (caché par défaut) */
+.tab-content {
+    display: none;
+}
+
+/* Contenu de l'onglet actif (affiché) */
+.tab-content.active {
+    display: block;
+}
+
+/* Style cosmétique pour le nouvel onglet Stats */
+.stats-box {
+    background: white;
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid #ddd;
+    text-align: center;
+}
+.stats-box p { margin: 0; color: #747d8c; font-size: 12px; }
+.stats-box h3 { margin: 5px 0 0 0; color: #2f3542; font-size: 20px; }
