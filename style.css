@@ -37,10 +37,12 @@ input[type="number"], input[type="color"] {
     height: 50px;
 }
 
-#addBall { 
+
+.btn { 
     width: 100%; 
     cursor: pointer; 
-    padding: 12px; 
+    padding: 12px;
+    margin-top: 10px;
     border-radius: 12px;
     background: linear-gradient(135deg, #ff4757, #ff6b81);
     color: white;
@@ -51,11 +53,11 @@ input[type="number"], input[type="color"] {
     transition: transform 0.1s, box-shadow 0.1s;
 }
 
-#addBall:hover { 
+.btn:hover { 
     transform: translateY(-1px);
     box-shadow: 0 6px 20px rgba(255, 71, 87, 0.4);
 }
 
-#addBall:active {
+.btn:active {
     transform: translateY(1px);
 }
