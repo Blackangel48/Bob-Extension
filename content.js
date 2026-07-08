@@ -20,23 +20,17 @@ class Ball {
   }
 
   shake() {
-    // Applique une force aléatoire pour secouer la balle
-    this.velX += (Math.random() - 0.5) * shakeForce; // Force horizontale aléatoire
-    this.velY += (Math.random() - 0.5) * shakeForce; // Force verticale aléatoire
+    this.velX += (Math.random() - 0.5) * shakeForce;
+    this.velY += (Math.random() - 0.5) * shakeForce;
   }
 
   destroy() {
-    // Supprime l'élément de la page web
     if (this.ball && this.ball.parentNode) {
       this.ball.parentNode.removeChild(this.ball);
     }
-
-    // Nettoie les listeners
     window.removeEventListener('mousemove', this.mouseMoveHandler);
     window.removeEventListener('mouseup', this.mouseUpHandler);
     this.ball.removeEventListener('mousedown', this.mouseDownHandler);
-
-    // Nettoie les références
     this.isDragging = false;
   }
 
@@ -50,20 +44,16 @@ class Ball {
       cursor: 'grab',
       zIndex: '1000000',
       boxShadow: '0 4px 5px rgba(0,0,0,0.3)',
-      // On retire la transition CSS pour la physique car elle ralentit les calculs
     });
   }
 
   initEvents() {
     this.mouseMoveHandler = (e) => {
       if (this.isDragging) {
-        // Calcul de la vitesse par l'écart de position
         this.velX = e.clientX - this.lastMouseX;
         this.velY = e.clientY - this.lastMouseY;
-
         this.posX = e.clientX - this.size / 2;
         this.posY = e.clientY - this.size / 2;
-
         this.lastMouseX = e.clientX;
         this.lastMouseY = e.clientY;
       }
@@ -83,9 +73,7 @@ class Ball {
     };
 
     window.addEventListener('mousemove', this.mouseMoveHandler);
-
     window.addEventListener('mouseup', this.mouseUpHandler);
-
     this.ball.addEventListener('mousedown', this.mouseDownHandler);
   }
 
@@ -98,7 +86,7 @@ class Ball {
       this.posX += this.velX;
       this.posY += this.velY;
 
-      // Collisions
+      // Collisions avec les murs
       if (closedTop){
         if (this.posY + this.size > window.innerHeight || this.posY < 0) {
           this.posY = this.posY < 0 ? 0 : window.innerHeight - this.size;
@@ -115,8 +103,10 @@ class Ball {
         this.posX = this.posX < 0 ? 0 : window.innerWidth - this.size;
       }
     }
+  }
 
-    // Rendu visuel
+  // Le rendu visuel est isolé pour éviter les micro-saccades pendant les calculs de collision
+  render() {
     this.ball.style.left = `${this.posX}px`;
     this.ball.style.top = `${this.posY}px`;
   }
@@ -125,12 +115,10 @@ class Ball {
 let gravity = 0.5;
 let friction = 0.985;
 let bounce = 0.8;
-let shakeForce = 100; // Force de secousse pour la fonction shake
-
+let shakeForce = 100;
 let closedTop = false;
 const Balls = [];
 
-// Charger les constantes sauvegardées au démarrage du script sur la page web
 chrome.storage.local.get(['gravity', 'friction', 'bounce', 'shake'], (data) => {
   if (data.gravity !== undefined) gravity = data.gravity;
   if (data.friction !== undefined) friction = data.friction;
@@ -138,9 +126,91 @@ chrome.storage.local.get(['gravity', 'friction', 'bounce', 'shake'], (data) => {
   if (data.shake !== undefined) shakeForce = data.shake;
 });
 
-// Boucle d'animation unique
+// --- LE MOTEUR DE COLLISION ENTRE BALLES ---
+function handleBallCollisions() {
+  for (let i = 0; i < Balls.length; i++) {
+    for (let j = i + 1; j < Balls.length; j++) {
+      const b1 = Balls[i];
+      const b2 = Balls[j];
+
+      // 1. Calcul des centres et rayons
+      const r1 = b1.size / 2;
+      const r2 = b2.size / 2;
+      const c1x = b1.posX + r1;
+      const c1y = b1.posY + r1;
+      const c2x = b2.posX + r2;
+      const c2y = b2.posY + r2;
+
+      // Distance vectorielle entre les deux centres
+      const dx = c2x - c1x;
+      const dy = c2y - c1y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const minDist = r1 + r2;
+
+      // S'il y a collision réelle (intersection des cercles)
+      if (distance < minDist) {
+        // Vecteur normal unitaire (direction de la collision)
+        const nx = distance === 0 ? 1 : dx / distance;
+        const ny = distance === 0 ? 0 : dy / distance;
+
+        // --- ÉTAPE A : SÉPARATION PHYSIQUE (Anti-clipping) ---
+        const overlap = minDist - distance;
+        
+        // Si aucune des deux n'est tenue par la souris, on partage la séparation
+        if (!b1.isDragging && !b2.isDragging) {
+          b1.posX -= nx * (overlap / 2);
+          b1.posY -= ny * (overlap / 2);
+          b2.posX += nx * (overlap / 2);
+          b2.posY += ny * (overlap / 2);
+        } else if (!b1.isDragging) { // b2 est tenue, seule b1 est repoussée
+          b1.posX -= nx * overlap;
+          b1.posY -= ny * overlap;
+        } else if (!b2.isDragging) { // b1 est tenue, seule b2 est repoussée
+          b2.posX += nx * overlap;
+          b2.posY += ny * overlap;
+        }
+
+        // --- ÉTAPE B : IMPULSION ÉLASTIQUE (Choc physique) ---
+        // Vitesse relative
+        const kx = b2.velX - b1.velX;
+        const ky = b2.velY - b1.velY;
+        const velAlongNormal = kx * nx + ky * ny;
+
+        // On résout le choc uniquement si elles se dirigent l'une vers l'autre
+        if (velAlongNormal < 0) {
+          // On utilise la taille du composant comme indicateur de Masse (m = size)
+          const m1 = b1.size;
+          const m2 = b2.size;
+
+          // Formule de l'impulsion de restitution (Choc élastique)
+          const impulse = (-(1 + bounce) * velAlongNormal) / ((1 / m1) + (1 / m2));
+
+          // Application des nouvelles vitesses vectorielles
+          if (!b1.isDragging) {
+            b1.velX -= (impulse / m1) * nx;
+            b1.velY -= (impulse / m1) * ny;
+          }
+          if (!b2.isDragging) {
+            b2.velX += (impulse / m2) * nx;
+            b2.velY += (impulse / m2) * ny;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Boucle d'animation unique synchronisée
 function mainLoop() {
+  // 1. On applique la physique de base (murs, gravité)
   Balls.forEach(ball => ball.update());
+  
+  // 2. On résout les collisions complexes entre les balles
+  handleBallCollisions();
+  
+  // 3. On affiche la position finale calculée de chaque élément
+  Balls.forEach(ball => ball.render());
+  
   requestAnimationFrame(mainLoop);
 }
 
@@ -149,10 +219,8 @@ mainLoop();
 // Chrome message listeners
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "createBall") {
-    // On crée une balle avec les données du popup
     for (let i = 0; i < request.number; i++) {
       if (request.isRandomColor) {
-        // Génère une couleur aléatoire
         request.color = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
       }
       const newBall = new Ball(
@@ -166,18 +234,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === "deleteBalls") {
-    // On supprime les balles
-    Balls.forEach((ball) => {
-      ball.destroy();
-    });
+    Balls.forEach((ball) => ball.destroy());
     Balls.length = 0;
   }
 
   if (request.action === "shakeBalls") {
-    // On secoue les balles
-    Balls.forEach((ball) => {
-      ball.shake();
-    });
+    Balls.forEach((ball) => ball.shake());
   }
 
   if (request.action === "getBallCount") {
@@ -185,19 +247,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
-  if (request.action === "updateGravity") {
-    gravity = request.gravity;
-  }
-  if (request.action === "updateFriction") {
-    friction = request.friction;
-  }
-  if (request.action === "updateBounce") {
-    bounce = request.bounce;
-  }
-  if (request.action === "updateShake") {
-    shakeForce = request.shake;
-  }
-  if (request.action === "updateClosedTop") {
-    closedTop = request.closedTop;
-  }
+  if (request.action === "updateGravity")    gravity = request.gravity;
+  if (request.action === "updateFriction")   friction = request.friction;
+  if (request.action === "updateBounce")     bounce = request.bounce;
+  if (request.action === "updateShake")      shakeForce = request.shake;
+  if (request.action === "updateClosedTop")  closedTop = request.closedTop;
 });
