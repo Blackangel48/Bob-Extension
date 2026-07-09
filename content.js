@@ -275,10 +275,11 @@ function handleBallCollisions() {
         const overlap = minDist - distance;
         
         if (!b1.isDragging && !b2.isDragging) {
-          b1.posX -= nx * (overlap / 2);
-          b1.posY -= ny * (overlap / 2);
-          b2.posX += nx * (overlap / 2);
-          b2.posY += ny * (overlap / 2);
+          const massRatio = b1.mass/(b1.mass + b2.mass);
+          b1.posX -= nx * (overlap * (1 - massRatio));
+          b1.posY -= ny * (overlap * (1 - massRatio));
+          b2.posX += nx * (overlap * massRatio);
+          b2.posY += ny * (overlap * massRatio);
         } else if (!b1.isDragging) {
           b1.posX -= nx * overlap;
           b1.posY -= ny * overlap;
