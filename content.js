@@ -53,8 +53,9 @@ chrome.storage.local.get(['gravity', 'friction', 'bounce', 'shake', 'closedTop',
 // 2. CLASSE BALL (VERSION CANVAS)
 // ==========================================
 class Ball {
-  constructor(size, color, posX, posY) {
+  constructor(size, mass, color, posX, posY) {
     this.size = size;
+    this.mass = mass;
     this.color = color;
     this.posX = posX;
     this.posY = posY;
@@ -81,12 +82,52 @@ class Ball {
     return (dx * dx + dy * dy) < (radius * radius);
   }
 
+  // Calcul du champ gravitationnel exercé par les autres balles
+  applyGravityAttraction(otherBall) {
+    const r1 = this.size / 2;
+    const r2 = otherBall.size / 2;
+    const c1x = this.posX + r1;
+    const c1y = this.posY + r1;
+    const c2x = otherBall.posX + r2;
+    const c2y = otherBall.posY + r2;
+
+    const dx = c2x - c1x;
+    const dy = c2y - c1y;
+    const distanceSquared = dx * dx + dy * dy;
+
+    if (distanceSquared === 0) return;
+
+    const distance = Math.sqrt(distanceSquared);
+
+    /* Loi de Newton adaptée : a = G * m_autre / d^2
+       On ajoute un "softening factor" (400) pour éviter que l'accélération 
+       ne tende vers l'infini lorsque deux balles se superposent.
+    */
+    const G = 0.15; 
+    const softening = 400;
+    const acceleration = (G * otherBall.mass) / (distanceSquared + softening);
+
+    const nx = dx / distance;
+    const ny = dy / distance;
+
+    // La modification de vélocité dépend uniquement de la masse de l'AUTRE balle
+    this.velX += nx * acceleration;
+    this.velY += ny * acceleration;
+  }
+
   // Calculs physiques de déplacement et limites d'écran
   update() {
     if (!this.isDragging) {
+      // Appliquer la gravité et la friction
       this.velY += gravity;
       this.velX *= friction;
       this.velY *= friction;
+
+      Balls.forEach((otherBall) => {
+        if (otherBall !== this) {
+          this.applyGravityAttraction(otherBall);
+        }
+      });
 
       this.posX += this.velX;
       this.posY += this.velY;
@@ -114,8 +155,33 @@ class Ball {
   // Dessin de la balle dans le Canvas
   render(context) {
     const radius = this.size / 2;
+    const cx = this.posX + radius;
+    const cy = this.posY + radius;
+
+    // 1. EFFET VISUEL : Aura de distorsion gravitationnelle (si la masse est importante)
+    if (this.mass > 150) {
+      context.beginPath();
+      context.arc(cx, cy, radius + Math.min(this.mass * 0.05, 150), 0, Math.PI * 2);
+      context.fillStyle = `rgba(116, 125, 136, ${Math.min(this.mass / 25000, 0.12)})`;
+      context.fill();
+      context.closePath();
+    }
+
+    // 2. CALCUL DU CONTOUR EN FONCTION DE LA MASSE
+    // Plus la balle est lourde, plus le contour extérieur sombre est épais.
+    // On limite l'épaisseur à 80% maximum du rayon pour que le cœur reste visible.
+    const borderThickness = Math.max(1, Math.min(this.mass / 40, radius * 1));
+
+    // Dessin du cercle de contour extérieur (Foncé)
     context.beginPath();
-    context.arc(this.posX + radius, this.posY + radius, radius, 0, Math.PI * 2);
+    context.arc(cx, cy, radius, 0, Math.PI * 2);
+    context.fillStyle = "#1e272e"; 
+    context.fill();
+    context.closePath();
+
+    // Dessin du cœur de la balle (Couleur sélectionnée)
+    context.beginPath();
+    context.arc(cx, cy, radius - borderThickness, 0, Math.PI * 2);
     context.fillStyle = this.color;
     context.fill();
     context.closePath();
@@ -178,6 +244,7 @@ function handleBallCollisions() {
       const b1 = Balls[i];
       const b2 = Balls[j];
 
+      // Calcul des centres et des rayons
       const r1 = b1.size / 2;
       const r2 = b2.size / 2;
       const c1x = b1.posX + r1;
@@ -185,10 +252,11 @@ function handleBallCollisions() {
       const c2x = b2.posX + r2;
       const c2y = b2.posY + r2;
 
+      // Calcul de la distance entre les centres
       const dx = c2x - c1x;
       const dy = c2y - c1y;
       
-      // OPTIMISATION : Comparaison des distances au carré (évite le Math.sqrt)
+      // Comparaison des distances au carré (évite le Math.sqrt (couteux) si pas de collision)
       const distSquared = dx * dx + dy * dy;
       const minDist = r1 + r2;
       const minDistSquared = minDist * minDist;
@@ -216,15 +284,17 @@ function handleBallCollisions() {
         }
 
         // --- ÉTAPE B : IMPULSION ÉLASTIQUE (Choc physique) ---
+        // Calcul de la vélocité relative le long de la normale
         const kx = b2.velX - b1.velX;
         const ky = b2.velY - b1.velY;
-        const velAlongNormal = kx * nx + ky * ny;
+        const velAlongNormal = kx * nx + ky * ny; // Produit scalaire pour obtenir la composante le long de la normale
 
         if (velAlongNormal < 0) {
-          const m1 = b1.size;
-          const m2 = b2.size;
-          const impulse = (-(1 + bounce) * velAlongNormal) / ((1 / m1) + (1 / m2));
+          const m1 = b1.mass;
+          const m2 = b2.mass;
+          const impulse = (-(1 + bounce) * velAlongNormal) / ((1 / m1) + (1 / m2)); // Impulsion totale à appliquer aux deux balles
 
+          // Application de l'impulsion aux vitesses des balles, sauf si elles sont en train d'être déplacées par l'utilisateur
           if (!b1.isDragging) {
             b1.velX -= (impulse / m1) * nx;
             b1.velY -= (impulse / m1) * ny;
@@ -272,10 +342,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         request.color = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
       }
       const newBall = new Ball(
-        request.size || 100, 
+        request.size || 100,
+        request.mass > 100000 ? 100000 : request.mass || 100,
         request.color || 'red', 
-        Math.floor(Math.random()*16777215) % (window.innerWidth - request.size || 100),
-        (window.innerHeight / 2) + (Math.floor(Math.random()*16777215) % 100)
+        Math.floor(Math.random()*window.innerWidth) % (window.innerWidth - (request.size || 100)),
+        (window.innerHeight / 2) + (Math.floor(Math.random()*100) - 50)
       );
       Balls.push(newBall);
     }

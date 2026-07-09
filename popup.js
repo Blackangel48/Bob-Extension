@@ -18,12 +18,14 @@ async function sendToContentScript(action, data = {}) {
 
 document.getElementById('addBall').addEventListener('click', async () => {
   const size = document.getElementById('ballSize').value;
+  const mass = document.getElementById('ballMass').value;
   const number = document.getElementById('ballNumber').value;
   const isRandom = document.getElementById('ballRandomColor').checked;
   let color = document.getElementById('ballColor').value;
 
   await sendToContentScript("createBall", {
     size: parseInt(size),
+    mass: parseInt(mass),
     isRandomColor: isRandom,
     color: color,
     number: parseInt(number)
