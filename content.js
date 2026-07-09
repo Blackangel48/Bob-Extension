@@ -1,3 +1,57 @@
+// ==========================================
+// 1. CONFIGURATION INITIALE & CANVAS
+// ==========================================
+
+// Initialisation du Canvas global
+const canvas = document.createElement('canvas');
+const ctx = canvas.getContext('2d');
+
+// Style du Canvas : invisible aux clics, plein écran et au-dessus de tout
+Object.assign(canvas.style, {
+  position: 'fixed',
+  top: '0',
+  left: '0',
+  width: '100vw',
+  height: '100vh',
+  zIndex: '10000000',
+  pointerEvents: 'none', // Laisse traverser les clics par défaut
+  background: 'transparent'
+});
+document.body.appendChild(canvas);
+
+// Gestion de la haute densité d'écran (Retina/4K) pour éviter le flou
+function resizeCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = window.innerWidth * dpr;
+  canvas.height = window.innerHeight * dpr;
+  ctx.scale(dpr, dpr); // Ajuste l'échelle du contexte de dessin
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// Variables physiques globales
+let gravity = 0.5;
+let friction = 0.985;
+let bounce = 0.8;
+let shakeForce = 100;
+let closedTop = false;
+let ballCollisions = false;
+const Balls = [];
+let grabbedBall = null; // Stocke la balle en cours de déplacement
+
+// Récupération des paramètres sauvegardés
+chrome.storage.local.get(['gravity', 'friction', 'bounce', 'shake', 'closedTop', 'ballCollisions'], (data) => {
+  if (data.gravity !== undefined) gravity = data.gravity;
+  if (data.friction !== undefined) friction = data.friction;
+  if (data.bounce !== undefined) bounce = data.bounce;
+  if (data.shake !== undefined) shakeForce = data.shake;
+  if (data.closedTop !== undefined) closedTop = data.closedTop;
+  if (data.ballCollisions !== undefined) ballCollisions = data.ballCollisions;
+});
+
+// ==========================================
+// 2. CLASSE BALL (VERSION CANVAS)
+// ==========================================
 class Ball {
   constructor(size, color, posX, posY) {
     this.size = size;
@@ -9,74 +63,25 @@ class Ball {
     this.isDragging = false;
     this.lastMouseX = 0;
     this.lastMouseY = 0;
-
-    // Création de l'élément
-    this.ball = document.createElement('div');
-    this.applyStyle();
-    document.body.appendChild(this.ball);
-
-    // Initialisation des événements
-    this.initEvents();
   }
 
+  // Secousse aléatoire
   shake() {
     this.velX += (Math.random() - 0.5) * shakeForce;
     this.velY += (Math.random() - 0.5) * shakeForce;
   }
 
-  destroy() {
-    if (this.ball && this.ball.parentNode) {
-      this.ball.parentNode.removeChild(this.ball);
-    }
-    window.removeEventListener('mousemove', this.mouseMoveHandler);
-    window.removeEventListener('mouseup', this.mouseUpHandler);
-    this.ball.removeEventListener('mousedown', this.mouseDownHandler);
-    this.isDragging = false;
+  // Vérifie si un point (coordonnées souris) est à l'intérieur de la balle
+  isPointInside(mx, my) {
+    const radius = this.size / 2;
+    const cx = this.posX + radius;
+    const cy = this.posY + radius;
+    const dx = mx - cx;
+    const dy = my - cy;
+    return (dx * dx + dy * dy) < (radius * radius);
   }
 
-  applyStyle() {
-    Object.assign(this.ball.style, {
-      width: `${this.size}px`,
-      height: `${this.size}px`,
-      backgroundColor: this.color,
-      borderRadius: '50%',
-      position: 'fixed',
-      cursor: 'grab',
-      zIndex: '1000000',
-      boxShadow: '0 4px 5px rgba(0,0,0,0.3)',
-    });
-  }
-
-  initEvents() {
-    this.mouseMoveHandler = (e) => {
-      if (this.isDragging) {
-        this.velX = e.clientX - this.lastMouseX;
-        this.velY = e.clientY - this.lastMouseY;
-        this.posX = e.clientX - this.size / 2;
-        this.posY = e.clientY - this.size / 2;
-        this.lastMouseX = e.clientX;
-        this.lastMouseY = e.clientY;
-      }
-    };
-
-    this.mouseUpHandler = () => {
-      this.isDragging = false;
-      this.ball.style.cursor = 'grab';
-    };
-
-    this.mouseDownHandler = (e) => {
-      e.preventDefault();
-      this.isDragging = true;
-      this.ball.style.cursor = 'grabbing';
-      this.lastMouseX = e.clientX;
-      this.lastMouseY = e.clientY;
-    };
-
-    window.addEventListener('mousemove', this.mouseMoveHandler);
-    window.addEventListener('mouseup', this.mouseUpHandler);
-    this.ball.addEventListener('mousedown', this.mouseDownHandler);
-  }
-
+  // Calculs physiques de déplacement et limites d'écran
   update() {
     if (!this.isDragging) {
       this.velY += gravity;
@@ -86,8 +91,8 @@ class Ball {
       this.posX += this.velX;
       this.posY += this.velY;
 
-      // Collisions avec les murs
-      if (closedTop){
+      // Collisions avec les bords verticaux (Plafond/Sol)
+      if (closedTop) {
         if (this.posY + this.size > window.innerHeight || this.posY < 0) {
           this.posY = this.posY < 0 ? 0 : window.innerHeight - this.size;
           this.velY *= -bounce;
@@ -98,6 +103,7 @@ class Ball {
           this.velY *= -bounce;
         }
       }
+      // Collisions avec les bords horizontaux (Murs)
       if (this.posX + this.size > window.innerWidth || this.posX < 0) {
         this.velX *= -bounce;
         this.posX = this.posX < 0 ? 0 : window.innerWidth - this.size;
@@ -105,36 +111,73 @@ class Ball {
     }
   }
 
-  // Le rendu visuel est isolé pour éviter les micro-saccades pendant les calculs de collision
-  render() {
-    this.ball.style.left = `${this.posX}px`;
-    this.ball.style.top = `${this.posY}px`;
+  // Dessin de la balle dans le Canvas
+  render(context) {
+    const radius = this.size / 2;
+    context.beginPath();
+    context.arc(this.posX + radius, this.posY + radius, radius, 0, Math.PI * 2);
+    context.fillStyle = this.color;
+    context.fill();
+    context.closePath();
   }
 }
 
-let gravity = 0.5;
-let friction = 0.985;
-let bounce = 0.8;
-let shakeForce = 100;
-let closedTop = false;
-let ballCollisions = false;
-const Balls = [];
+// ==========================================
+// 3. GESTIONNAIRE DES ÉVÉNEMENTS SOURIS (DRAG & DROP)
+// ==========================================
 
-chrome.storage.local.get(['gravity', 'friction', 'bounce', 'shake'], (data) => {
-  if (data.gravity !== undefined) gravity = data.gravity;
-  if (data.friction !== undefined) friction = data.friction;
-  if (data.bounce !== undefined) bounce = data.bounce;
-  if (data.shake !== undefined) shakeForce = data.shake;
+// Mode capture (true) pour intercepter le clic avant les éléments du site web
+window.addEventListener('mousedown', (e) => {
+  // Parcours inversé pour attraper la balle visible au premier plan
+  for (let i = Balls.length - 1; i >= 0; i--) {
+    if (Balls[i].isPointInside(e.clientX, e.clientY)) {
+      grabbedBall = Balls[i];
+      grabbedBall.isDragging = true;
+      grabbedBall.lastMouseX = e.clientX;
+      grabbedBall.lastMouseY = e.clientY;
+
+      // On active les pointer-events pour bloquer les actions du site pendant le drag
+      canvas.style.pointerEvents = 'auto';
+      canvas.style.cursor = 'grabbing';
+
+      e.preventDefault();
+      e.stopPropagation();
+      break;
+    }
+  }
+}, true);
+
+window.addEventListener('mousemove', (e) => {
+  if (grabbedBall) {
+    grabbedBall.velX = e.clientX - grabbedBall.lastMouseX;
+    grabbedBall.velY = e.clientY - grabbedBall.lastMouseY;
+    grabbedBall.posX = e.clientX - grabbedBall.size / 2;
+    grabbedBall.posY = e.clientY - grabbedBall.size / 2;
+    grabbedBall.lastMouseX = e.clientX;
+    grabbedBall.lastMouseY = e.clientY;
+  }
 });
 
-// --- LE MOTEUR DE COLLISION ENTRE BALLES ---
+window.addEventListener('mouseup', () => {
+  if (grabbedBall) {
+    grabbedBall.isDragging = false;
+    grabbedBall = null;
+    
+    // On restitue la transparence aux clics pour le site web
+    canvas.style.pointerEvents = 'none';
+    canvas.style.cursor = 'default';
+  }
+});
+
+// ==========================================
+// 4. MOTEUR DE COLLISION ENTRE BALLES (OPTIMISÉ)
+// ==========================================
 function handleBallCollisions() {
   for (let i = 0; i < Balls.length; i++) {
     for (let j = i + 1; j < Balls.length; j++) {
       const b1 = Balls[i];
       const b2 = Balls[j];
 
-      // 1. Calcul des centres et rayons
       const r1 = b1.size / 2;
       const r2 = b2.size / 2;
       const c1x = b1.posX + r1;
@@ -142,51 +185,46 @@ function handleBallCollisions() {
       const c2x = b2.posX + r2;
       const c2y = b2.posY + r2;
 
-      // Distance vectorielle entre les deux centres
       const dx = c2x - c1x;
       const dy = c2y - c1y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      // OPTIMISATION : Comparaison des distances au carré (évite le Math.sqrt)
+      const distSquared = dx * dx + dy * dy;
       const minDist = r1 + r2;
+      const minDistSquared = minDist * minDist;
 
-      // S'il y a collision réelle (intersection des cercles)
-      if (distance < minDist) {
-        // Vecteur normal unitaire (direction de la collision)
+      if (distSquared < minDistSquared) {
+        // Le calcul lourd de la racine carrée ne se fait QUE si la collision est confirmée
+        const distance = Math.sqrt(distSquared);
         const nx = distance === 0 ? 1 : dx / distance;
         const ny = distance === 0 ? 0 : dy / distance;
 
         // --- ÉTAPE A : SÉPARATION PHYSIQUE (Anti-clipping) ---
         const overlap = minDist - distance;
         
-        // Si aucune des deux n'est tenue par la souris, on partage la séparation
         if (!b1.isDragging && !b2.isDragging) {
           b1.posX -= nx * (overlap / 2);
           b1.posY -= ny * (overlap / 2);
           b2.posX += nx * (overlap / 2);
           b2.posY += ny * (overlap / 2);
-        } else if (!b1.isDragging) { // b2 est tenue, seule b1 est repoussée
+        } else if (!b1.isDragging) {
           b1.posX -= nx * overlap;
           b1.posY -= ny * overlap;
-        } else if (!b2.isDragging) { // b1 est tenue, seule b2 est repoussée
+        } else if (!b2.isDragging) {
           b2.posX += nx * overlap;
           b2.posY += ny * overlap;
         }
 
         // --- ÉTAPE B : IMPULSION ÉLASTIQUE (Choc physique) ---
-        // Vitesse relative
         const kx = b2.velX - b1.velX;
         const ky = b2.velY - b1.velY;
         const velAlongNormal = kx * nx + ky * ny;
 
-        // On résout le choc uniquement si elles se dirigent l'une vers l'autre
         if (velAlongNormal < 0) {
-          // On utilise la taille du composant comme indicateur de Masse (m = size)
           const m1 = b1.size;
           const m2 = b2.size;
-
-          // Formule de l'impulsion de restitution (Choc élastique)
           const impulse = (-(1 + bounce) * velAlongNormal) / ((1 / m1) + (1 / m2));
 
-          // Application des nouvelles vitesses vectorielles
           if (!b1.isDragging) {
             b1.velX -= (impulse / m1) * nx;
             b1.velY -= (impulse / m1) * ny;
@@ -201,25 +239,32 @@ function handleBallCollisions() {
   }
 }
 
-// Boucle d'animation unique synchronisée
+// ==========================================
+// 5. BOUCLE PRINCIPALE D'ANIMATION
+// ==========================================
 function mainLoop() {
-  // 1. On applique la physique de base (murs, gravité)
+  // Effaçage complet de l'écran avant le nouveau rendu
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // 1. Mise à jour des positions et de la gravité
   Balls.forEach(ball => ball.update());
   
-  // 2. On résout les collisions complexes entre les balles
+  // 2. Traitement des collisions complexes entre balles
   if (ballCollisions) {
     handleBallCollisions();
   }
   
-  // 3. On affiche la position finale calculée de chaque élément
-  Balls.forEach(ball => ball.render());
+  // 3. Dessin final de l'ensemble des éléments
+  Balls.forEach(ball => ball.render(ctx));
   
   requestAnimationFrame(mainLoop);
 }
 
 mainLoop();
 
-// Chrome message listeners
+// ==========================================
+// 6. ÉCOUTEUR DE MESSAGES CHROME
+// ==========================================
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "createBall") {
     for (let i = 0; i < request.number; i++) {
@@ -237,8 +282,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === "deleteBalls") {
-    Balls.forEach((ball) => ball.destroy());
-    Balls.length = 0;
+    // Plus besoin d'interagir avec le DOM, vider le tableau suffit !
+    Balls.length = 0; 
   }
 
   if (request.action === "shakeBalls") {
@@ -250,10 +295,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
-  if (request.action === "updateGravity")    gravity = request.gravity;
-  if (request.action === "updateFriction")   friction = request.friction;
-  if (request.action === "updateBounce")     bounce = request.bounce;
-  if (request.action === "updateShake")      shakeForce = request.shake;
-  if (request.action === "updateClosedTop")  closedTop = request.closedTop;
-  if (request.action === "updateBallCollisions")  ballCollisions = request.ballCollisions;
+  // Synchronisation dynamique des sliders d'options
+  if (request.action === "updateGravity")        gravity = request.gravity;
+  if (request.action === "updateFriction")       friction = request.friction;
+  if (request.action === "updateBounce")         bounce = request.bounce;
+  if (request.action === "updateShake")          shakeForce = request.shake;
+  if (request.action === "updateClosedTop")      closedTop = request.closedTop;
+  if (request.action === "updateBallCollisions") ballCollisions = request.ballCollisions;
 });
