@@ -36,17 +36,19 @@ let bounce = 0.8;
 let shakeForce = 100;
 let closedTop = false;
 let ballCollisions = false;
+let gravityField = false;
 const Balls = [];
 let grabbedBall = null; // Stocke la balle en cours de déplacement
 
 // Récupération des paramètres sauvegardés
-chrome.storage.local.get(['gravity', 'friction', 'bounce', 'shake', 'closedTop', 'ballCollisions'], (data) => {
+chrome.storage.local.get(['gravity', 'friction', 'bounce', 'shake', 'closedTop', 'ballCollisions', 'gravityField'], (data) => {
   if (data.gravity !== undefined) gravity = data.gravity;
   if (data.friction !== undefined) friction = data.friction;
   if (data.bounce !== undefined) bounce = data.bounce;
   if (data.shake !== undefined) shakeForce = data.shake;
   if (data.closedTop !== undefined) closedTop = data.closedTop;
   if (data.ballCollisions !== undefined) ballCollisions = data.ballCollisions;
+  if (data.gravityField !== undefined) gravityField = data.gravityField;
 });
 
 // ==========================================
@@ -123,11 +125,13 @@ class Ball {
       this.velX *= friction;
       this.velY *= friction;
 
-      Balls.forEach((otherBall) => {
-        if (otherBall !== this) {
-          this.applyGravityAttraction(otherBall);
-        }
-      });
+      if (gravityField) {
+        Balls.forEach((otherBall) => {
+          if (otherBall !== this) {
+            this.applyGravityAttraction(otherBall);
+          }
+        });
+      }
 
       this.posX += this.velX;
       this.posY += this.velY;
@@ -373,4 +377,5 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "updateShake")          shakeForce = request.shake;
   if (request.action === "updateClosedTop")      closedTop = request.closedTop;
   if (request.action === "updateBallCollisions") ballCollisions = request.ballCollisions;
+  if (request.action === "updateGravityField")   gravityField = request.gravityField;
 });
