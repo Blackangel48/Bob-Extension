@@ -117,6 +117,7 @@ let friction = 0.985;
 let bounce = 0.8;
 let shakeForce = 100;
 let closedTop = false;
+let ballCollisions = false;
 const Balls = [];
 
 chrome.storage.local.get(['gravity', 'friction', 'bounce', 'shake'], (data) => {
@@ -206,7 +207,9 @@ function mainLoop() {
   Balls.forEach(ball => ball.update());
   
   // 2. On résout les collisions complexes entre les balles
-  handleBallCollisions();
+  if (ballCollisions) {
+    handleBallCollisions();
+  }
   
   // 3. On affiche la position finale calculée de chaque élément
   Balls.forEach(ball => ball.render());
@@ -252,4 +255,5 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "updateBounce")     bounce = request.bounce;
   if (request.action === "updateShake")      shakeForce = request.shake;
   if (request.action === "updateClosedTop")  closedTop = request.closedTop;
+  if (request.action === "updateBallCollisions")  ballCollisions = request.ballCollisions;
 });

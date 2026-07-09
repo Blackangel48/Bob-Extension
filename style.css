@@ -219,3 +219,8 @@ h4 {
     background: #e4e7eb;
     margin: 15px 0;
 }
+
+#ballCollisions {
+    margin-top: 10px;
+    display: block;
+}
