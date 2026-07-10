@@ -38,7 +38,8 @@ let closedTop = false;
 let ballCollisions = false;
 let gravityField = false;
 const Balls = [];
-let grabbedBall = null; // Stocke la balle en cours de déplacement
+let grabbedBall = null;
+let pendingBalls = [];
 
 // Récupération des paramètres sauvegardés
 chrome.storage.local.get(['gravity', 'friction', 'bounce', 'shake', 'closedTop', 'ballCollisions', 'gravityField'], (data) => {
@@ -66,6 +67,8 @@ class Ball {
     this.isDragging = false;
     this.lastMouseX = 0;
     this.lastMouseY = 0;
+    this.toBeDeleted = false;
+    this.cooldown = 10;
   }
 
   // Secousse aléatoire
@@ -119,6 +122,7 @@ class Ball {
 
   // Calculs physiques de déplacement et limites d'écran
   update() {
+    if (this.cooldown > 0) this.cooldown--;
     if (!this.isDragging) {
       // Appliquer la gravité et la friction
       this.velY += gravity;
@@ -240,13 +244,69 @@ window.addEventListener('mouseup', () => {
 });
 
 // ==========================================
-// 4. MOTEUR DE COLLISION ENTRE BALLES (OPTIMISÉ)
+// 4. GESTION DE L'ACCRETION ET DE LA FRAGMENTATION DES BALLES
+// ==========================================
+
+function triggerAccretion(b1, b2) {
+  // Calcul de la nouvelle surface (en utilisant le diamètre 'size')
+  const newSize = Math.sqrt(Math.pow(b1.size, 2) + Math.pow(b2.size, 2));
+  const newMass = b1.mass + b2.mass;
+  
+  // Conservation de la quantité de mouvement
+  const newVelX = ((b1.mass * b1.velX) + (b2.mass * b2.velX)) / newMass;
+  const newVelY = ((b1.mass * b1.velY) + (b2.mass * b2.velY)) / newMass;
+  
+  // Position : on place la nouvelle balle au barycentre des deux anciennes
+  const newPosX = ((b1.posX * b1.mass) + (b2.posX * b2.mass)) / newMass;
+  const newPosY = ((b1.posY * b1.mass) + (b2.posY * b2.mass)) / newMass;
+
+  // Création de la nouvelle entité
+  const newBall = new Ball(newSize, newMass, b1.mass > b2.mass ? b1.color : b2.color, newPosX, newPosY);
+  newBall.velX = newVelX;
+  newBall.velY = newVelY;
+  
+  pendingBalls.push(newBall);
+  b1.toBeDeleted = true;
+  b2.toBeDeleted = true;
+}
+
+function triggerFragmentation(b, vRelMagnitude) {
+  // Le nombre de fragments dépend de la violence du choc (mini 2, maxi 5)
+  const fragments = Math.min(5, Math.max(2, Math.floor(vRelMagnitude / 15)));
+  
+  // L'énergie de l'explosion est redistribuée proportionnellement à l'impact
+  const explosionEnergy = vRelMagnitude * 0.15;
+
+  const fragMass = b.mass / fragments;
+  const fragSize = b.size / Math.sqrt(fragments); // Si A_totale = 3 * A_frag, alors R_frag = R_parent / sqrt(3)
+
+  for(let i = 0; i < fragments; i++) {
+    const angle = (Math.PI * 2 / fragments) * i; // Répartition radiale des fragments
+    const offset = fragSize * 0.1;
+    const fragPosX = b.posX + Math.cos(angle) * offset;
+    const fragPosY = b.posY + Math.sin(angle) * offset;
+
+    const fragment = new Ball(fragSize, fragMass, b.color, fragPosX, fragPosY); // Position initiale autour du centre de la balle parent
+    
+    // Le fragment hérite de la vélocité parent + une explosion radiale d'énergie
+    fragment.velX = b.velX + Math.cos(angle) * explosionEnergy;
+    fragment.velY = b.velY + Math.sin(angle) * explosionEnergy;
+    
+    pendingBalls.push(fragment);
+  }
+  b.toBeDeleted = true;
+}
+
+// ==========================================
+// 5. MOTEUR DE COLLISION ENTRE BALLES (OPTIMISÉ)
 // ==========================================
 function handleBallCollisions() {
   for (let i = 0; i < Balls.length; i++) {
     for (let j = i + 1; j < Balls.length; j++) {
       const b1 = Balls[i];
       const b2 = Balls[j];
+
+      if (b1.toBeDeleted || b2.toBeDeleted) continue;
 
       // Calcul des centres et des rayons
       const r1 = b1.size / 2;
@@ -293,6 +353,32 @@ function handleBallCollisions() {
         const kx = b2.velX - b1.velX;
         const ky = b2.velY - b1.velY;
         const velAlongNormal = kx * nx + ky * ny; // Produit scalaire pour obtenir la composante le long de la normale
+        const vRelMagnitude = Math.sqrt(kx*kx + ky*ky); // Vitesse d'impact absolue
+
+        // Seuils à ajuster
+        const ACCRETION_LIMIT = 0.5; // Vitesse relative en dessous de laquelle les balles fusionnent
+        const FRAGMENTATION_LIMIT = 30.0; // Vitesse relative au-dessus de laquelle les balles se fragmentent
+
+        const minSizeForFragmentation = 5; // Taille minimale pour qu'une balle puisse se fragmenter
+
+        const canTransform = (b1.cooldown === 0 && b2.cooldown === 0);
+
+        if (canTransform && vRelMagnitude < ACCRETION_LIMIT && !b1.isDragging && !b2.isDragging) {
+          triggerAccretion(b1, b2);
+          continue;
+        } 
+        else if (canTransform && vRelMagnitude > FRAGMENTATION_LIMIT) {
+          if (b1.mass < b2.mass) {
+            if (b1.size > minSizeForFragmentation) {
+              triggerFragmentation(b1, vRelMagnitude);
+            }
+          } else {
+            if (b2.size > minSizeForFragmentation) {
+              triggerFragmentation(b2, vRelMagnitude);
+            }
+          }
+          continue;
+        }
 
         if (velAlongNormal < 0) {
           const m1 = b1.mass;
@@ -315,21 +401,33 @@ function handleBallCollisions() {
 }
 
 // ==========================================
-// 5. BOUCLE PRINCIPALE D'ANIMATION
+// 6. BOUCLE PRINCIPALE D'ANIMATION
 // ==========================================
 function mainLoop() {
   // Effaçage complet de l'écran avant le nouveau rendu
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // 1. Mise à jour des positions et de la gravité
+  // Mise à jour des positions et de la gravité
   Balls.forEach(ball => ball.update());
   
-  // 2. Traitement des collisions complexes entre balles
+  // Traitement des collisions complexes entre balles
   if (ballCollisions) {
     handleBallCollisions();
   }
-  
-  // 3. Dessin final de l'ensemble des éléments
+
+  // Filtrer les balles détruites
+  for (let i = Balls.length - 1; i >= 0; i--) {
+    if (Balls[i].toBeDeleted) {
+      Balls.splice(i, 1);
+    }
+  }
+  // Intégrer les nouvelles balles générées (accrétion ou fragmentation)
+  if (pendingBalls.length > 0) {
+    Balls.push(...pendingBalls);
+    pendingBalls.length = 0; // On vide la file
+  }
+
+  // Dessin final de l'ensemble des éléments
   Balls.forEach(ball => ball.render(ctx));
   
   requestAnimationFrame(mainLoop);
@@ -338,7 +436,7 @@ function mainLoop() {
 mainLoop();
 
 // ==========================================
-// 6. ÉCOUTEUR DE MESSAGES CHROME
+// 7. ÉCOUTEUR DE MESSAGES CHROME
 // ==========================================
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "createBall") {
